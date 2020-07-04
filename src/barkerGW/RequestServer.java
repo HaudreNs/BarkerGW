@@ -4,11 +4,25 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.StringReader;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
+import javax.xml.xpath.XPathExpressionException;
+import javax.xml.xpath.XPathFactory;
+
+import org.w3c.dom.Document;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 public class RequestServer implements Runnable
 {
@@ -34,19 +48,31 @@ public class RequestServer implements Runnable
                 SessionParameters sp = new SessionParameters();
                 //TODO get timeout from conf in the form seconds * 1000
 
-                m_socket.setSoTimeout( 3 * 1000);
+                m_socket.setSoTimeout( 30000);
                 //get request
                 String sRequest = readRequest();
                 if(sRequest.isEmpty())
                 {
-                    m_socket.close();
-                    sp.setStatusCode(Constants.requestStatusToCode(Constants.RequestServerStatus.BAD_XML));
+                    System.out.println("Cannot parse empty request");
+                    sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
                     sendResponse(sp);
+                    m_socket.close();
                     continue;
                 }
+               System.out.println(sRequest);
+               
                 sp.setRequestXML(sRequest);
                 //parse request
-                sp = parseRequest(sp);
+                sp = getRequestType(sp);
+                
+                
+                if(sp.getStatusCode() != Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS))
+                {
+                    //send response with error message and code
+                    sendResponse(sp);
+                }
+                
+                
                 //send to provisioning to do the work and create response
                 sp = executeCommand(sp);
 
@@ -68,13 +94,69 @@ public class RequestServer implements Runnable
 
     private SessionParameters executeCommand(SessionParameters sp)
     {
+        Provisioning pProvisioning = new Provisioning();
+        
+        if(sp.getRequestType() == Constants.RequestType.REGISTER) sp = pProvisioning.doRegister(sp);
+        else if(sp.getRequestType() == Constants.RequestType.PASSWORD_RESET)sp = pProvisioning.doResetPassword(sp);
         // TODO Auto-generated method stub
-        return null;
+        System.out.println("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
+        return sp;
     }
 
 
-    private SessionParameters parseRequest(SessionParameters sp)
+    private SessionParameters getRequestType(SessionParameters sp)
     {
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            pExp = pXpath.compile("Barker/@requestType");
+            String sRequestType = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+
+            
+            Constants.RequestType eRequestType = Constants.textToRequestType(sRequestType);
+            System.out.println("Request type parameter. Request type is: " 
+                    + Constants.requestTypeToText(eRequestType));
+            
+            
+            sp.setRequestType(eRequestType);
+            if(sp.getRequestType() == Constants.RequestType.UNKNOWN)
+            {
+                sp.setStatusCode(Constants.requestStatusToCode(Constants.RequestServerStatus.MISSING_PARAMETER));
+                sp.setStatusText("Missing request type parameter");
+                
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
+            }
+            
+
+        } catch (ParserConfigurationException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (SAXException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (IOException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        } catch (XPathExpressionException e)
+        {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
         
         
         return sp;
@@ -195,7 +277,7 @@ public class RequestServer implements Runnable
         sRequest+=sResult;        
         
         
-        return sRequest;
+        return sResult;
     }
 
 }

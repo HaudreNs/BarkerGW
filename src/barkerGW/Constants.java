@@ -46,25 +46,25 @@ public class Constants
         case VIEW_FORUM_SUBJECT: return "viewForumSubject";
         case GET_ACOMMODATIONS: return "getAccomodations";
         case CREATE_ACOMMODATION: return "createAcommodation";
-        default: return "";
+        default: return "unknown";
         }
             
     }
     
     public static RequestType textToRequestType(String sType)
     {
-        if(sType == "register") return RequestType.REGISTER;
-        else if(sType == "login") return RequestType.LOG_IN;
-        else if(sType == "passwordReset") return RequestType.PASSWORD_RESET;
-        else if(sType == "addFriend") return RequestType.ADD_FRIEND;
-        else if(sType == "acceptFriend") return RequestType.ACCEPT_FRIEND;
-        else if(sType == "getFriends") return RequestType.GET_FRIENDS;
-        else if(sType == "findWalk") return RequestType.FIND_WALK;
-        else if(sType == "createWalk") return RequestType.CREATE_WALK;
-        else if(sType == "getForumSubjects") return RequestType.GET_FORUM_SUBJECTS;
-        else if(sType == "viewForumSubject") return RequestType.VIEW_FORUM_SUBJECT;
-        else if(sType == "getAccomodations") return RequestType.GET_ACOMMODATIONS;
-        else if(sType == "createAcommodation") return RequestType.CREATE_ACOMMODATION;
+        if(sType.equals("register")) return RequestType.REGISTER;
+        else if(sType.equals("login")) return RequestType.LOG_IN;
+        else if(sType.equals("passwordReset")) return RequestType.PASSWORD_RESET;
+        else if(sType.equals("addFriend")) return RequestType.ADD_FRIEND;
+        else if(sType.equals("acceptFriend")) return RequestType.ACCEPT_FRIEND;
+        else if(sType.equals("getFriends")) return RequestType.GET_FRIENDS;
+        else if(sType.equals("findWalk")) return RequestType.FIND_WALK;
+        else if(sType.equals("createWalk")) return RequestType.CREATE_WALK;
+        else if(sType.equals("getForumSubjects")) return RequestType.GET_FORUM_SUBJECTS;
+        else if(sType.equals("viewForumSubject")) return RequestType.VIEW_FORUM_SUBJECT;
+        else if(sType.equals("getAccomodations")) return RequestType.GET_ACOMMODATIONS;
+        else if(sType.equals("createAcommodation")) return RequestType.CREATE_ACOMMODATION;
         else return RequestType.UNKNOWN;
     }
     

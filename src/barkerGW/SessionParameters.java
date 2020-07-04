@@ -7,6 +7,7 @@ public class SessionParameters
     private String m_sResponseXML = "";
     private int m_nStatusCode = 0;
     private String m_sStatusText = "";
+    private String m_sRequestType = "";
     private Constants.RequestServerStatus m_eRequestStatus = Constants.RequestServerStatus.SUCCESS;
     private Constants.RequestType m_eRequestType = Constants.RequestType.UNKNOWN ;
 
@@ -50,6 +51,9 @@ public class SessionParameters
     public void setRequestStatus(Constants.RequestServerStatus eRequestStatus)
     {
         m_eRequestStatus = eRequestStatus;
+        m_nStatusCode = Constants.requestStatusToCode(m_eRequestStatus);
+        m_sStatusText = Constants.requestStatusToText(m_eRequestStatus);
+        
     }
     public Constants.RequestType getRequestType()
     {
@@ -58,5 +62,15 @@ public class SessionParameters
     public void setRequestType(Constants.RequestType requestType)
     {
         m_eRequestType = requestType;
+    }
+    
+    public String getRequestTypeText()
+    {
+        if(m_sRequestType.isEmpty()) 
+        {
+            m_sRequestType = Constants.requestTypeToText(m_eRequestType);
+        }
+        
+        return m_sRequestType;
     }
 }

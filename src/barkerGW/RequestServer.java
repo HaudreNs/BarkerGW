@@ -35,31 +35,36 @@ public class RequestServer implements Runnable
         
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");  
         LocalDateTime now = LocalDateTime.now();  
-        System.out.println("RequestServer start time: " + dtf.format(now));  
+        Log.logRequestServer("RequestServer start time: " + dtf.format(now));  
+        ServerSocket pServerSocket = null;
         
         try
         {
-            ServerSocket pServerSocket = new ServerSocket( 12345, 3, InetAddress.getByName( "127.0.0.1" ) );
+            String sIp = Config.get("request-server-ip");
+            int nPort = Integer.parseInt(Config.get("request-server-port")); 
+            int nTimeOut = Integer.parseInt(Config.get("request-server-timeout"));
+            int nBackLog = Integer.parseInt(Config.get("request-server-backlog"));
+            nTimeOut *= 1000;
+            pServerSocket = new ServerSocket( nPort, nBackLog, InetAddress.getByName(sIp) );
             
             while(true)
             {
                 //accept client
                 m_socket = pServerSocket.accept();
                 SessionParameters sp = new SessionParameters();
-                //TODO get timeout from conf in the form seconds * 1000
-
-                m_socket.setSoTimeout( 30000);
+                
+                m_socket.setSoTimeout( nTimeOut);
                 //get request
                 String sRequest = readRequest();
                 if(sRequest.isEmpty())
                 {
-                    System.out.println("Cannot parse empty request");
+                    Log.logRequestServer("cannot parse empty request");
                     sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
                     sendResponse(sp);
                     m_socket.close();
                     continue;
                 }
-               System.out.println(sRequest);
+                Log.logRequestServer(sRequest);
                
                 sp.setRequestXML(sRequest);
                 //parse request
@@ -84,8 +89,14 @@ public class RequestServer implements Runnable
         } 
         catch (Exception e)
         {
-            System.out.println("Request Server stopped after terminal error");
-            e.printStackTrace();
+            Log.logRequestServer("Request Server stopped after terminal error" + e.getMessage());
+            try
+            {
+                pServerSocket.close();
+            } catch (IOException e1)
+            {
+                Log.logRequestServer(e1.getMessage());
+            }
         }   
 
 
@@ -99,7 +110,7 @@ public class RequestServer implements Runnable
         if(sp.getRequestType() == Constants.RequestType.REGISTER) sp = pProvisioning.doRegister(sp);
         else if(sp.getRequestType() == Constants.RequestType.PASSWORD_RESET)sp = pProvisioning.doResetPassword(sp);
         // TODO Auto-generated method stub
-        System.out.println("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
+        Log.logRequestServer("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
         return sp;
     }
 
@@ -142,20 +153,17 @@ public class RequestServer implements Runnable
 
         } catch (ParserConfigurationException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Log.logRequestServer(e.getMessage());
+
         } catch (SAXException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Log.logRequestServer(e.getMessage());
         } catch (IOException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Log.logRequestServer(e.getMessage());
         } catch (XPathExpressionException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Log.logRequestServer(e.getMessage());
         }
         
         
@@ -188,6 +196,9 @@ public class RequestServer implements Runnable
                       + "    <statusCode>" + sp.getStatusCode() + "</statusCode>\n" 
                       + "    <statusText>" + sp.getStatusText() + "</statusText>\n"
                       + "</Barker>";
+            
+            Log.logRequestServer(sResponse);
+
         }
         try
         {
@@ -206,16 +217,14 @@ public class RequestServer implements Runnable
         } 
         catch (IOException e)
         {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+            Log.logRequestServer(e.getMessage());
             try
             {
                 if(pWriter != null) pWriter.close();
             }
             catch (IOException e2)
             {
-                // TODO Auto-generated catch block
-                e2.printStackTrace();
+                Log.logRequestServer(e2.getMessage());
             }
         }
 
@@ -229,7 +238,6 @@ public class RequestServer implements Runnable
         InputStreamReader pInputStreamReader = new InputStreamReader( m_socket.getInputStream(), "utf-8");
         BufferedReader pBufferedReader = new BufferedReader( pInputStreamReader );
         
-        String sRequest = "";
         String sResult = "";
         int nContentLength = 0;
         
@@ -237,7 +245,6 @@ public class RequestServer implements Runnable
         while( true )
         {
             String sLine =  pBufferedReader.readLine();
-            sRequest+=sLine+"\n";
 
             if ( sLine.toLowerCase().startsWith( "content-length:" ) )
             {
@@ -274,7 +281,6 @@ public class RequestServer implements Runnable
             sResult += (char)x;
         }
         
-        sRequest+=sResult;        
         
         
         return sResult;

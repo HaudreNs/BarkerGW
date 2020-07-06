@@ -28,6 +28,7 @@ public class Constants
        ,DATABASE_ERROR
        ,BAD_XML
        ,MISSING_PARAMETER
+       ,MISSING_USER
     }
 
     public static String requestTypeToText(RequestType eType )
@@ -86,6 +87,7 @@ public class Constants
             case DATABASE_ERROR: return 503;
             case BAD_XML: return 400;
             case MISSING_PARAMETER: return 460;
+            case MISSING_USER: return 401;
             default: return 0;
         }
     }
@@ -104,6 +106,7 @@ public class Constants
             case DATABASE_ERROR: return "Database Error";
             case BAD_XML: return "Bad Request";
             case MISSING_PARAMETER: return "Missing Parameter";
+            case MISSING_USER: return "Missing User";
             default: return "Unknown status";
         }
     }

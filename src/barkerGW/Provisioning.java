@@ -42,7 +42,7 @@ public class Provisioning
                 </register>
             </Barker>
          */
-        System.out.println("Provisioning::doRegister()");
+        Log.logProvisioning("Provisioning::doRegister()");
         
         Document pDoc= null;
         DocumentBuilder pBuilder = null;
@@ -79,7 +79,7 @@ public class Provisioning
         }
         catch(Exception e)
         {
-            e.printStackTrace();
+            Log.logProvisioning(e.getMessage());
             sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
             return sp;
         }
@@ -100,7 +100,7 @@ public class Provisioning
 //            // TODO Auto-generated catch block
 //            e.printStackTrace();
 //        }
-        System.out.println("User with name: " + sName + " ,email: " + sEmail + " ,password: " + sPassword 
+        Log.logProvisioning("User with name: " + sName + " ,email: " + sEmail + " ,password: " + sPassword 
                 + " ,birthDate: " + sBirthDate);
 
         if(!sBirthDate.isEmpty())
@@ -116,11 +116,45 @@ public class Provisioning
             } 
         }
         
-      String sConnection = "jdbc:postgresql://127.0.0.1:5432/postgres";
+        if(sEmail.isEmpty())
+        {
+            Log.logProvisioning("Provisioning::doRegister missing email");
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            return sp;
+        }
+        
+        if(!Tools.authenticateEmail(sEmail))
+        {
+            Log.logProvisioning("Provisioning::doRegister incorrect email format " + sEmail);
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            return sp;
+        }
+        if(sName.isEmpty())
+        {
+            Log.logProvisioning("Provisioning::doRegister missing name for email: " + sName);
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            return sp;
+        }
+        if(sPassword.isEmpty())
+        {
+            Log.logProvisioning("Provisioning::doRegister missing password for email: " + sName);
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            return sp;
+        }
+        //SHA-256 string length
+        if(sPassword.length() != 64)
+        {
+            Log.logProvisioning("Provisioning::doRegister wrong password format for email: " + sName);
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            return sp;
+        }
+        
+
+      String sConnection = Config.get("database-connection-string");
       Connection pDB = null;
       try
       {
-          pDB = DriverManager.getConnection(sConnection, "postgres", "password");
+          pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
           
           
           String sSql = "";
@@ -138,7 +172,7 @@ public class Provisioning
                       + "('" + sEmail + "','" + sName + "', '" + sPassword + "' , " + sBirthDate + ") RETURNING user_id";
           }
               
-          System.out.println("SQL: " + sSql);
+          Log.logProvisioning("SQL: " + sSql);
 
           PreparedStatement pStatement = pDB.prepareStatement(sSql);
           
@@ -166,7 +200,7 @@ public class Provisioning
       } catch (SQLException e)
       {
           sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
-          e.printStackTrace();
+          Log.logProvisioning(e.getMessage());
           return sp;
       }
       finally
@@ -178,8 +212,7 @@ public class Provisioning
                   pDB.close();
               } catch (SQLException e)
               {
-                  // TODO Auto-generated catch block
-                  e.printStackTrace();
+                  Log.logProvisioning(e.getMessage());
               }
           }
       }
@@ -191,8 +224,224 @@ public class Provisioning
 
     public SessionParameters doResetPassword(SessionParameters sp)
     {
-        // TODO Auto-generated method stub
+
+        /*
+         * <Barker requestType="passwordReset">
+                <passwordReset>
+                    <email>haudrennb@gmail.com</email>
+                    <password>8451ead0e04c63b538d89c8eb779567be38636863901248bfb5beed5dfadc7c1</password>
+                    <code>A5DFS2</code>
+                </passwordReset>
+            </Barker>
+         */
+        Log.logProvisioning("Provisioning::doResetPassword()");
         
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail = "";
+        String sPassword = "";
+        String sCode = "";
+        
+        
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/email");
+            sEmail = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/password");
+            sPassword = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/code");
+            sCode = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
+        }
+        catch(Exception e)
+        {
+            Log.logProvisioning(e.getMessage());
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            return sp;
+        }
+        
+        if(sEmail.isEmpty())
+        {
+            Log.logProvisioning("Provisioning::doResetPassword empty email provided");
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            return sp;
+        }
+        
+        if(!Tools.authenticateEmail(sEmail))
+        {
+            Log.logProvisioning("Provisioning::doResetPassword incorrect email: " + sEmail);
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            return sp;
+        }
+        
+        //check if user exists
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            
+            Log.logProvisioning("SQL: " + sSql);
+
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            //user doesn't exist
+            if(!pSet.next())
+            {
+                Log.logProvisioning("Provisioning::doResetPassword cannot find user with email " + sEmail + " in DB");
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                return sp;
+            }
+        }
+        catch(Exception e)
+        {
+            Log.logProvisioning("Provisioning::doResetPassword error authenticating whether user exists");
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+        }
+        finally
+        {
+            if(pDB != null)
+            {
+                try
+                {
+                    pDB.close();
+                } catch (SQLException e)
+                {
+                    Log.logProvisioning(e.getMessage());
+                }
+            }
+        }
+        
+        //user needs a code sent to him - do just that
+        if(sCode.isEmpty())
+        {
+            StringBuilder pCodeCreator = new StringBuilder();
+            //create code
+            String sCharacters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            
+            int nChar;
+            for(int i=0;i<6;++i)
+            {
+                nChar = (int) (Math.random() * sCharacters.length());
+                
+                //6 digit code
+                pCodeCreator.append(sCharacters.charAt(nChar));
+            }
+            sCode = pCodeCreator.toString();
+            
+            //insert code in DB
+            try
+            {
+                if(pDB == null)pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+                
+                
+                String sSql = "INSERT INTO " + Config.get("table-password-reset") + "(user_email,password_reset_code) VALUES (?,?)";
+                
+                Log.logProvisioning("SQL: " + sSql);
+
+                PreparedStatement pStatement = pDB.prepareStatement(sSql);
+                
+                pStatement.setString(1, sEmail);
+                pStatement.setString(2,sCode);
+                
+                pStatement.executeQuery();
+                
+
+            }
+            catch(Exception e)
+            {
+                Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " + sEmail);
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            }
+            finally
+            {
+                if(pDB != null)
+                {
+                    try
+                    {
+                        pDB.close();
+                    } catch (SQLException e)
+                    {
+                        Log.logProvisioning(e.getMessage());
+                    }
+                }
+            }
+            //send email
+            EmailHelper.sendAuthenticationEmail(sEmail, sCode);
+            
+            sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
+            return sp;
+        }
+        
+        //user already has received code. Check code against DB for user
+        
+        try
+        {
+            if(pDB == null)pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT 1 FROM " + Config.get("table-password-reset") + "WHERE user_email ='" + sEmail + "'"
+                    + " AND password_reset_code ='" + sCode + "'"; 
+            
+            Log.logProvisioning("SQL: " + sSql);
+
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+
+            ResultSet pSet = pStatement.executeQuery();
+            
+            //such request doesn't exist
+            if(!pSet.next())
+            {
+                Log.logProvisioning("Provisioning::doResetPassword cannot find change password with that email and code for " + sEmail);
+                sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+                return sp;
+            }
+
+            sSql = "UPDATE " + Config.get("table-users") + " SET user_password = '" + sPassword + "'"
+                    + " WHERE user_email = '" + sEmail + "'";
+            
+            pStatement = pDB.prepareStatement(sSql);
+            
+
+            pSet = pStatement.executeQuery();
+
+            sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
+            return sp;
+        }
+        catch(Exception e)
+        {
+            Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " + sEmail);
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+        }
+        finally
+        {
+            if(pDB != null)
+            {
+                try
+                {
+                    pDB.close();
+                } catch (SQLException e)
+                {
+                    Log.logProvisioning(e.getMessage());
+                }
+            }
+        }
         
         return sp;
     }

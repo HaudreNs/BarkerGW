@@ -12,6 +12,7 @@ public class Constants
        ,ACCEPT_FRIEND
        ,GET_FRIENDS
        ,FIND_WALK
+       ,VIEW_WALKS
        ,CREATE_WALK
        ,GET_FORUM_SUBJECTS
        ,CREATE_FORUM_SUBJECT
@@ -29,6 +30,9 @@ public class Constants
        ,BAD_XML
        ,MISSING_PARAMETER
        ,MISSING_USER
+       ,USER_ALREADY_EXISTS
+       ,MISSING_FRIEND_REQUEST
+       ,FRIEND_REQUEST_ALREADY_EXISTS
     }
 
     public static String requestTypeToText(RequestType eType )
@@ -43,6 +47,7 @@ public class Constants
         case GET_FRIENDS: return "getFriends";
         case FIND_WALK: return "findWalk";
         case CREATE_WALK: return "createWalk";
+        case VIEW_WALKS: return "viewWalks";
         case GET_FORUM_SUBJECTS: return "getForumSubjects";
         case VIEW_FORUM_SUBJECT: return "viewForumSubject";
         case GET_ACOMMODATIONS: return "getAccomodations";
@@ -61,6 +66,7 @@ public class Constants
         else if(sType.equals("acceptFriend")) return RequestType.ACCEPT_FRIEND;
         else if(sType.equals("getFriends")) return RequestType.GET_FRIENDS;
         else if(sType.equals("findWalk")) return RequestType.FIND_WALK;
+        else if(sType.equals("viewWalks")) return RequestType.VIEW_WALKS;
         else if(sType.equals("createWalk")) return RequestType.CREATE_WALK;
         else if(sType.equals("getForumSubjects")) return RequestType.GET_FORUM_SUBJECTS;
         else if(sType.equals("viewForumSubject")) return RequestType.VIEW_FORUM_SUBJECT;
@@ -88,6 +94,9 @@ public class Constants
             case BAD_XML: return 400;
             case MISSING_PARAMETER: return 460;
             case MISSING_USER: return 401;
+            case USER_ALREADY_EXISTS: return 402;
+            case MISSING_FRIEND_REQUEST: return 403;
+            case FRIEND_REQUEST_ALREADY_EXISTS: return 405;
             default: return 0;
         }
     }
@@ -107,6 +116,9 @@ public class Constants
             case BAD_XML: return "Bad Request";
             case MISSING_PARAMETER: return "Missing Parameter";
             case MISSING_USER: return "Missing User";
+            case USER_ALREADY_EXISTS: return "User already exists";
+            case MISSING_FRIEND_REQUEST: return "Missing friend request";
+            case FRIEND_REQUEST_ALREADY_EXISTS: return "Friend request already exists";
             default: return "Unknown status";
         }
     }
@@ -121,6 +133,9 @@ public class Constants
             case 503: return "Database Error";
             case 400: return "Bad Request";
             case 460: return "Missing Parameter";
+            case 402: return "User already exists";
+            case 403: return "Missing friend request";
+            case 405: return "Friend request already exists";
             default: return "Unknown status";
         }
     }

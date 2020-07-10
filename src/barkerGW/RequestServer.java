@@ -109,6 +109,14 @@ public class RequestServer implements Runnable
         
         if(sp.getRequestType() == Constants.RequestType.REGISTER) sp = pProvisioning.doRegister(sp);
         else if(sp.getRequestType() == Constants.RequestType.PASSWORD_RESET)sp = pProvisioning.doResetPassword(sp);
+        else if(sp.getRequestType() == Constants.RequestType.LOG_IN) sp = pProvisioning.doLogIn(sp);
+        else if(sp.getRequestType() == Constants.RequestType.ADD_FRIEND) sp = pProvisioning.doAddFriend(sp);
+        else if(sp.getRequestType() == Constants.RequestType.ACCEPT_FRIEND) sp = pProvisioning.doAcceptFriend(sp);
+        else if(sp.getRequestType() == Constants.RequestType.GET_FRIENDS) sp = pProvisioning.doGetFriends(sp);
+        else if(sp.getRequestType() == Constants.RequestType.CREATE_WALK) sp = pProvisioning.doCreateWalk(sp);
+        else if(sp.getRequestType() == Constants.RequestType.VIEW_WALKS) sp = pProvisioning.doGetWalks(sp);
+
+
         // TODO Auto-generated method stub
         Log.logRequestServer("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
         return sp;

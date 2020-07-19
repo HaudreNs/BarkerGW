@@ -31,11 +31,15 @@ public class EmailHelper
             @Override
             protected PasswordAuthentication getPasswordAuthentication()
             {
+                Log.logProvisioning("Entered getPasswordAuthentication");
                 return new PasswordAuthentication(m_sEmail, m_sPassword);
             }
         });
         
+        Log.logProvisioning("Received session");
+        
         Message pMessage = getMessage(pSession,sRecepient,sCode);
+        Log.logProvisioning("Got message");
         
         //not created successfully
         if(pMessage == null)
@@ -46,6 +50,7 @@ public class EmailHelper
         
         try
         {
+            Log.logProvisioning("Entered send transport");
             Transport.send(pMessage);
             Log.logProvisioning("EmailHelper::sendAuthenticationEmail sent code " + sCode + " to user " + sRecepient);
             
@@ -61,7 +66,11 @@ public class EmailHelper
 
     private static Message getMessage(Session pSession, String sRecepient, String sCode)
     {
+        Log.logProvisioning("Entered getMessage ");
+
         Message pMessage = new MimeMessage(pSession);
+        
+        Log.logProvisioning("Created getMessage ");
         
         try
         {
@@ -70,6 +79,7 @@ public class EmailHelper
             //TODO - maybe get subject and message from DB(This way HTML can be used"
             pMessage.setSubject("Barker Password Resset");
             pMessage.setText("Your code for Barker is: " + sCode + "\n Please insert the code in the application");
+            Log.logProvisioning("Finished getting message");
             
         } catch (Exception e)
         {

@@ -115,8 +115,15 @@ public class RequestServer implements Runnable
         else if(sp.getRequestType() == Constants.RequestType.GET_FRIENDS) sp = pProvisioning.doGetFriends(sp);
         else if(sp.getRequestType() == Constants.RequestType.CREATE_WALK) sp = pProvisioning.doCreateWalk(sp);
         else if(sp.getRequestType() == Constants.RequestType.VIEW_WALKS) sp = pProvisioning.doGetWalks(sp);
-
-
+        else if(sp.getRequestType() == Constants.RequestType.GET_FORUM_SUBJECTS) sp = pProvisioning.doGetForumSubjects(sp);
+        else if(sp.getRequestType() == Constants.RequestType.VIEW_FORUM_SUBJECT) sp = pProvisioning.doViewSubject(sp);
+        else if(sp.getRequestType() == Constants.RequestType.CREATE_FORUM_SUBJECT) sp = pProvisioning.doCreateSubject(sp);
+        else if(sp.getRequestType() == Constants.RequestType.CREATE_SUBJECT_COMMENT) sp = pProvisioning.doCreateSubjectComment(sp);
+        else if(sp.getRequestType() == Constants.RequestType.GET_ACCOMMODATIONS) sp = pProvisioning.doGetAccommodations(sp);
+        else if(sp.getRequestType() == Constants.RequestType.CREATE_ACCOMMODATION) sp = pProvisioning.doCreateAccommodation(sp);
+        else if(sp.getRequestType() == Constants.RequestType.RATE_ACCOMMODATION) sp = pProvisioning.doRateAccommodation(sp);
+        else if(sp.getRequestType() == Constants.RequestType.CREATE_ACCOMMODATION_COMMENT) sp = pProvisioning.doCreateAccommodationComment(sp);
+        else if(sp.getRequestType() == Constants.RequestType.VIEW_PROFILE) sp = pProvisioning.doViewProfile(sp);
         // TODO Auto-generated method stub
         Log.logRequestServer("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
         return sp;
@@ -200,7 +207,7 @@ public class RequestServer implements Runnable
                </Barker>
              */
             
-            sResponse = "<Barker requestType=\"register\"> \r\n"
+            sResponse = "<Barker requestType=\"" + sp.getRequestTypeText() + "\"> \r\n"
                       + "    <statusCode>" + sp.getStatusCode() + "</statusCode>\n" 
                       + "    <statusText>" + sp.getStatusText() + "</statusText>\n"
                       + "</Barker>";
@@ -247,51 +254,41 @@ public class RequestServer implements Runnable
         BufferedReader pBufferedReader = new BufferedReader( pInputStreamReader );
         
         String sResult = "";
-        int nContentLength = 0;
         
         // Read headers
-        while( true )
+        try
         {
-            String sLine =  pBufferedReader.readLine();
-
-            if ( sLine.toLowerCase().startsWith( "content-length:" ) )
+            while( true )
             {
-                String sContentLength = "";
-                for( int i = 15; i < sLine.length(); i++ )
+                String sLine =  pBufferedReader.readLine();
+                                
+                if(sLine == null) break;
+                   
+                sResult += sLine+ "\r\n";
+                if(sLine.indexOf("</Barker>") != -1)
                 {
-                    if( Character.isDigit( sLine.charAt( i ) ) )
-                    {
-                        sContentLength+=sLine.charAt( i );
-                    }
+                    break;
                 }
-                
-                if( !sContentLength.isEmpty() ) nContentLength = Integer.parseInt( sContentLength );
             }
-
-            if ( sLine.length() == 0 )
-            {
-                break;
-            }           
         }
-        
-        for( int i=0; i<nContentLength; i++ )
+        catch(Exception e)
         {
-            int x = pBufferedReader.read();
-                
-            // BEGIN Is this correct?!!??!!?
-            if ( x >= 256 )
-                i++;
-            // END
-            
-            if ( x == -1 )
-                break;
-            
-            sResult += (char)x;
+            return "Bad request";
         }
+
+        int nStartXML = sResult.indexOf("<Barker ");
+        int nEndXML = sResult.indexOf("</Barker>");
+        
+        if(nStartXML == -1 || nEndXML == -1)
+        {
+            return "Bad request";
+        }
+        nEndXML +=  "</Barker>".length();
+        
+        Log.logProvisioning("Received request: " + sResult);
         
         
-        
-        return sResult;
+        return sResult.substring(nStartXML, nEndXML);
     }
 
 }

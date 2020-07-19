@@ -37,10 +37,12 @@ public class Provisioning
         /*
             <Barker requestType="register">
                 <register>
-                    <name>[alphanum]</name>
-                    <password>[SHA256 encryption]</password>
-                    <email>[email] </email>
-                    <birthDate>[optional date]</birthDate>
+                    <username>HaudreN</username>
+                    <name>Kaloyan Nikolov</name>
+                    --info - password - helloworld
+                    <password>936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af</password>
+                    <email>haudrennb@gmail.com </email>
+                    <birthDate></birthDate>
                 </register>
             </Barker>
          */
@@ -53,6 +55,7 @@ public class Provisioning
         String sPassword = "";
         String sEmail = "";
         String sBirthDate = "";
+        String sUsername = "";
         
         
         try
@@ -64,6 +67,9 @@ public class Provisioning
             XPathFactory pXpathFactory = XPathFactory.newInstance();
             XPath pXpath = pXpathFactory.newXPath();            
             XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/username");
+            sUsername = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
             
             pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/name");
             sName = (String)pExp.evaluate( pDoc, XPathConstants.STRING );
@@ -103,7 +109,7 @@ public class Provisioning
 //            e.printStackTrace();
 //        }
         Log.logProvisioning("User with name: " + sName + " ,email: " + sEmail + " ,password: " + sPassword 
-                + " ,birthDate: " + sBirthDate);
+                + " ,birthDate: " + sBirthDate + " ,username: " + sUsername);
 
         if(!sBirthDate.isEmpty())
         {
@@ -121,6 +127,13 @@ public class Provisioning
         if(sEmail.isEmpty())
         {
             Log.logProvisioning("Provisioning::doRegister missing email");
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            return sp;
+        }
+        
+        if(sUsername.isEmpty())
+        {
+            Log.logProvisioning("Provisioning::doRegister missing username");
             sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
             return sp;
         }
@@ -164,7 +177,7 @@ public class Provisioning
           //TODO - make checks whether the email address exists already, whether password and email are correct,
           //escape strings before inserting in database
           
-          sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sEmail + "'";
+          sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sEmail.trim() + "'";
           
           PreparedStatement pStatement = pDB.prepareStatement(sSql);
           
@@ -179,13 +192,13 @@ public class Provisioning
           
           if(sBirthDate.isEmpty())
           { 
-               sSql = "INSERT INTO barker.users (user_email, user_name, user_password) VALUES"
-                       + "('" + sEmail + "','" + sName + "', '" + sPassword + "') RETURNING user_id";
+               sSql = "INSERT INTO barker.users (user_email, user_name, user_password, user_username) VALUES"
+                       + "('" + sEmail.trim() + "','" + sName.trim() + "', '" + sPassword.trim() + "' , '" + sUsername + "') RETURNING user_id";
           }
           else
           {
-              sSql = "INSERT INTO barker.users (user_email, user_name, user_password,user_birth_date ) VALUES "
-                      + "('" + sEmail + "','" + sName + "', '" + sPassword + "' , " + sBirthDate + ") RETURNING user_id";
+              sSql = "INSERT INTO barker.users (user_email, user_name, user_password,user_birth_date, user_username ) VALUES "
+                      + "('" + sEmail.trim() + "','" + sName + "', '" + sPassword.trim() + "' , " + sBirthDate + ",'" + sUsername.trim() + "') RETURNING user_id";
           }
               
           Log.logProvisioning("SQL: " + sSql);
@@ -244,7 +257,8 @@ public class Provisioning
          * <Barker requestType="passwordReset">
                 <passwordReset>
                     <email>haudrennb@gmail.com</email>
-                    <password>8451ead0e04c63b538d89c8eb779567be38636863901248bfb5beed5dfadc7c1</password>
+                    --new password - helloworld1
+                    <password>d55e6a8c0f30870be24c37098273afb1dc877a5544f049f86ef0cdd7201b937c</password>
                     <code>A5DFS2</code>
                 </passwordReset>
             </Barker>
@@ -307,7 +321,7 @@ public class Provisioning
             pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
             
             
-            String sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            String sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail.trim() + "'";
             
             Log.logProvisioning("SQL: " + sSql);
 
@@ -327,20 +341,19 @@ public class Provisioning
         {
             Log.logProvisioning("Provisioning::doResetPassword error authenticating whether user exists");
             sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
-        }
-        finally
-        {
             if(pDB != null)
             {
                 try
                 {
                     pDB.close();
-                } catch (SQLException e)
+                } catch (SQLException e1)
                 {
-                    Log.logProvisioning(e.getMessage());
+                    Log.logProvisioning(e1.getMessage());
                 }
             }
+            return sp;
         }
+
         
         //user needs a code sent to him - do just that
         if(sCode.isEmpty())
@@ -361,26 +374,22 @@ public class Provisioning
             
             //insert code in DB
             try
-            {
-                if(pDB == null)pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            {                
                 
-                
-                String sSql = "INSERT INTO " + Config.get("table-password-reset") + "(user_email,password_reset_code) VALUES (?,?)";
+                String sSql = "INSERT INTO " + Config.get("table-password-reset") + "(user_email,password_reset_code, password_reset_is_used)"
+                        + " VALUES ('" +sEmail.trim() + "','" +sCode + "', false) RETURNING 1 as created";
                 
                 Log.logProvisioning("SQL: " + sSql);
 
                 PreparedStatement pStatement = pDB.prepareStatement(sSql);
-                
-                pStatement.setString(1, sEmail);
-                pStatement.setString(2,sCode);
-                
+
                 pStatement.executeQuery();
                 
 
             }
             catch(Exception e)
             {
-                Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " + sEmail);
+                Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " + sEmail + "\n " + e.getMessage());
                 sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
                 return sp;
             }
@@ -407,42 +416,48 @@ public class Provisioning
         //user already has received code. Check code against DB for user
         
         try
-        {
-            if(pDB == null)pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+        {            
             
-            
-            String sSql = "SELECT 1 FROM " + Config.get("table-password-reset") + "WHERE user_email ='" + sEmail + "'"
-                    + " AND password_reset_code ='" + sCode + "'"; 
-            
+            String sSql = "UPDATE " + Config.get("table-password-reset") + " SET password_reset_is_used = true WHERE user_email ='" + sEmail.trim() + "'"
+                    + " AND password_reset_code ='" + sCode.trim() + "' and password_reset_is_used = false"; 
+                        
             Log.logProvisioning("SQL: " + sSql);
 
             PreparedStatement pStatement = pDB.prepareStatement(sSql);
             
 
-            ResultSet pSet = pStatement.executeQuery();
+            int nResult = pStatement.executeUpdate();
             
             //such request doesn't exist
-            if(!pSet.next())
+            if(nResult < 1)
             {
-                Log.logProvisioning("Provisioning::doResetPassword cannot find change password with that email and code for " + sEmail);
+                Log.logProvisioning("Provisioning::doResetPassword cannot find change password with that email and code or is already used for " + sEmail);
                 sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
                 return sp;
             }
 
-            sSql = "UPDATE " + Config.get("table-users") + " SET user_password = '" + sPassword + "'"
-                    + " WHERE user_email = '" + sEmail + "'";
+            sSql = "UPDATE " + Config.get("table-users") + " SET user_password = '" + sPassword.trim() + "'"
+                    + " WHERE user_email = '" + sEmail.trim() + "'";
             
             pStatement = pDB.prepareStatement(sSql);
             
 
-            pSet = pStatement.executeQuery();
+            nResult = pStatement.executeUpdate();
+            
+            if(nResult == 0)
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+                Log.logProvisioning("Couldn't update password for user: " + sEmail);
+                return sp;
+            }
 
             sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
             return sp;
         }
         catch(Exception e)
         {
-            Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " + sEmail);
+            Log.logProvisioning("Provisioning::doResetPassword error inserting code in DB for user " 
+        + sEmail + "\n " + e.getMessage() );
             sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
         }
         finally
@@ -524,7 +539,7 @@ public class Provisioning
             //TODO - make checks whether the email address exists already, whether password and email are correct,
             //escape strings before inserting in database
             
-            sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sEmail + "'";
+            sSql = "SELECT * FROM barker.users WHERE user_email = '" + sEmail.trim() + "'";
             
             PreparedStatement pStatement = pDB.prepareStatement(sSql);
             
@@ -538,7 +553,7 @@ public class Provisioning
                 return sp;
             }
             
-            sSql += " AND user_password = '" + sPassword + "'";
+            sSql += " AND user_password = '" + sPassword.trim() + "'";
             
             pStatement = pDB.prepareStatement(sSql);
             
@@ -546,7 +561,35 @@ public class Provisioning
             
             if(pSet.next())
             {
-                sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
+                /* Response:
+                 <Barker requestType="login">
+                    <statusCode>200</statusCode>
+                    <statusText>OK</statusText>
+                    <id>1</id>
+                    <username>HaudreN</username>
+                    <name>Kaloyan Nikolov</name>
+                    <email>haudrennb@gmail.com </email>
+                    <birthDate></birthDate>
+                </Barker>
+                 */
+                String sResponse = "<Barker requestType=\"login\">\n" + 
+                                    "           <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" + 
+                                    "           <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS)  +"</statusText>\n" + 
+                                    "           <id>" + pSet.getString("user_id") + "</id>\n" + 
+                                    "           <username>" + pSet.getString("user_username")  + "</username>\n" + 
+                                    "           <name>" + pSet.getString("user_name")  + "</name>\n" + 
+                                    "           <email>" + pSet.getString("user_email")  + "</email>\n" + 
+                                    "           <birthDate>" + pSet.getString("user_birth_date")  + "</birthDate>\n" + 
+                                    "</Barker>";
+                
+                sp.setResponseXML(sResponse);
+
+                return sp;
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.BAD_PASSWORD);
+                Log.logProvisioning("Provisioning::doLogIn wrong password for user " + sEmail);
                 return sp;
             }
             //TODO - create counter in DB for bad Requests. In case 5 are made create field user_is_locked
@@ -560,7 +603,7 @@ public class Provisioning
         }
         
         
-        return sp;
+    
     }
 
     public SessionParameters doAddFriend(SessionParameters sp)
@@ -621,7 +664,9 @@ public class Provisioning
             
             String sSql = "";
 
-            sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sFromEmail + "'";
+            sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sFromEmail + "'";
+            
+            Log.logProvisioning("Provisioning::doAddFriend SQL: " + sSql);
             
             PreparedStatement pStatement = pDB.prepareStatement(sSql);
             
@@ -635,7 +680,8 @@ public class Provisioning
                 return sp;
             }
             
-            sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sToEmail + "'";
+            sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sToEmail + "'";
+            Log.logProvisioning("Provisioning::doAddFriend SQL: " + sSql);
             
             pStatement = pDB.prepareStatement(sSql);
             
@@ -649,8 +695,11 @@ public class Provisioning
                 return sp;
             }
             
-            sSql = "SELECT 1 FROM barker.friend.requests WHERE (friend_from = '" + sFromEmail + "' AND friend_to = '" + sToEmail + "')"
+            sSql = "SELECT 1 FROM " + Config.get("table-friend-requests") + " WHERE (friend_from = '" + sFromEmail + "' AND friend_to = '" + sToEmail + "')"
                     + "OR (friend_from = '" + sToEmail + "' AND friend_to = '" + sFromEmail + "'";
+            
+            Log.logProvisioning("Provisioning::doAddFriend SQL: " + sSql);
+
             
             pStatement = pDB.prepareStatement(sSql);
             
@@ -663,9 +712,11 @@ public class Provisioning
                 return sp;
             }
             
-            sSql = "INSERT INTO barker.friendRequests(friend_from,friend_to,friend_is_accepted) "
+            sSql = "INSERT INTO "  + Config.get("table-friend-requests") + "(friend_from,friend_to,friend_is_accepted) "
                     + "VALUES ("
                     +"'" +sFromEmail + "'" + "', '" + sToEmail + "',0) RETURNING friend_id";
+            
+            Log.logProvisioning("Provisioning::doAddFriend SQL: " + sSql);
             
             
             pStatement = pDB.prepareStatement(sSql);
@@ -773,8 +824,10 @@ public class Provisioning
             //TODO - make checks whether the email address exists already, whether password and email are correct,
             //escape strings before inserting in database
             
-            sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sFromEmail + "'";
-            
+            sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sFromEmail + "'";
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
+
             PreparedStatement pStatement = pDB.prepareStatement(sSql);
             
             ResultSet pSet = pStatement.executeQuery();
@@ -787,7 +840,8 @@ public class Provisioning
                 return sp;
             }
             
-            sSql = "SELECT 1 FROM barker.users WHERE user_email = '" + sToEmail + "'";
+            sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sToEmail + "'";
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
             
             pStatement = pDB.prepareStatement(sSql);
             
@@ -801,8 +855,9 @@ public class Provisioning
                 return sp;
             }
             
-            sSql = "SELECT 1 FROM barker.friend.requests WHERE (friend_from = '" + sFromEmail + "' AND friend_to = '" + sToEmail + "')"
+            sSql = "SELECT 1 FROM " + Config.get("table-friend-requests") + " WHERE (friend_from = '" + sFromEmail + "' AND friend_to = '" + sToEmail + "')"
                     + "OR (friend_from = '" + sToEmail + "' AND friend_to = '" + sFromEmail + "'";
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
             
             pStatement = pDB.prepareStatement(sSql);
             
@@ -817,7 +872,7 @@ public class Provisioning
 
             if(sIsAccepted.equals("yes"))
             {
-                sSql = "UPDATE barker.friendRequests SET friend_is_accepted = 1 WHERE friend_from = '" + sFromEmail + "'"
+                sSql = "UPDATE " + Config.get("table-users") + " SET friend_is_accepted = 1 WHERE friend_from = '" + sFromEmail + "'"
                         + " AND friend_to = '" + sToEmail + "'";
                 
             }
@@ -825,6 +880,7 @@ public class Provisioning
             {
                 sSql = "DELETE FROM barker.friendRequests WHERE friend_from = '" + sFromEmail + "'"
                         + " AND friend_to = '" + sToEmail + "'";
+
             }
             else
             {
@@ -833,10 +889,20 @@ public class Provisioning
                 return sp;
             }
             
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
+            pStatement = pDB.prepareStatement(sSql);        
             
-            pStatement = pDB.prepareStatement(sSql);
+            int nResult = pStatement.executeUpdate();
             
-            pSet = pStatement.executeQuery();
+            if(nResult == 0)
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_FRIEND_REQUEST);
+                Log.logProvisioning("Provisioning::doAcceptFriend cannot accept or delete request" );
+                return sp;
+            }
+            
+            Log.logProvisioning("Provisioning::doAcceptFriend SQL: " + sSql);
+
             
             sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
             return sp;
@@ -1178,7 +1244,7 @@ public class Provisioning
         
         String sEmail = "";
 
-        String sResponse ="<Barker requestType=\"getWalks\">";
+        String sResponse ="";
         try
         {
             DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
@@ -1259,10 +1325,13 @@ public class Provisioning
                                 +"  </walk>";
                 }
             }
+            sResponse = "<Barker requestType=\"getWalks\">\n" 
+                       +"   <statusCode>200</statusCode>"
+                       +"   </statusText>OK</statusText>"
+                       +sResponse
+                       +"</Barker>";
             
-            sResponse += "</Barker>";
-            
-            //TODO ADD 200OK
+
             sp.setRequestStatus(Constants.RequestServerStatus.SUCCESS);
             sp.setResponseXML(sResponse);
             return sp;
@@ -1273,9 +1342,1061 @@ public class Provisioning
             Log.logProvisioning("Provisioning::doCreateWalk Error: " + e.getMessage());
             sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
             return sp;
-            }
+        }
         
         
     }
+
+    public SessionParameters doGetForumSubjects(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="getForumSubjects">
+            <getForumSubjects>
+                <fromSubject>0</fromSubject>
+                <toSubject>20</toSubject>
+            </getForumSubjects>
+        </Barker>
+          */
+        Log.logProvisioning("Provisioning::doGetForumSubjects()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        int nFromSubject=0;
+        int nToSubject = 0;
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/fromSubject");
+            nFromSubject = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/toSubject");
+            nToSubject = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        
+        if (nFromSubject <= 0 || nToSubject <= 0 || nToSubject > nFromSubject)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            Log.logProvisioning("Provisioning::doGetForumSubjects bad from or to values: " + nFromSubject + " " + nToSubject);
+            return sp;
+        }
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "";
+            
+            sSql = "SELECT * FROM " + Config.get("table-subjects") + " WHERE subject_id BETWEEN " + nFromSubject + " AND " + nToSubject;
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            //TODO add Barker line
+            while(pSet.next())
+            {
+                sResponse+= "   <subject> \n"
+                           +"       <id>" + pSet.getString("subject_id") + "</id> \n"
+                           +"       <name>" + pSet.getString("subject_name") + "</name> \n"
+                           +"       <customerUsername>" + pSet.getString("subject_customer_username") + "</customerUsername> \n"
+                           +"   </subject> \n";
+            }
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Error selecting subjects from database " + e.getMessage());
+            return sp;
+        }
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+        
+        sp.setResponseXML(sResponse);
+        
+        return sp;
+    }
+
+    public SessionParameters doViewSubject(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="viewForumSubjects">
+            <viewForumSubjects>
+                <id>1</id>
+            </viewForumSubjects>
+        </Barker>
+         */
+        
+        Log.logProvisioning("Provisioning::doViewSubject()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        int nId=0;
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/id");
+            nId = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doViewSubject Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        
+        if(nId <= 0)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            Log.logProvisioning("Provisioning::doViewSubject wrong id ");
+            return sp;
+        }
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "";
+            
+            sSql = "SELECT * FROM " + Config.get("table-subjects") + " WHERE subject_id = " + nId;
+            Log.logProvisioning("Provisioning::doViewSubject SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            sResponse = "<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                    + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                    + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n";
+            
+            if(pSet.next())
+            {
+                sResponse += "      <subject id = \"" + nId + "\"> \n";
+                sResponse += "          <name>" + pSet.getString("subject_name") + "</name> \n";
+                sResponse += "          <description>" + pSet.getString("subject_description") + "</description> \n";
+                sResponse += "          <user>" + pSet.getString("subject_user_username") + "</user> \n";
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_SUBJECT);
+                Log.logProvisioning("Provisioning::doViewSubject subject does not exist " + nId);
+                return sp;
+            }
+            
+            sSql = "SELECT * FROM " + Config.get("table-comments") + " WHERE subject_id = " + nId;
+            
+            Log.logProvisioning("Provisioning::doViewSubject SQL: " + sSql);
+            
+            pStatement = pDB.prepareStatement(sSql);
+            
+            pSet = pStatement.executeQuery();
+            
+            while(pSet.next())
+            {
+                sResponse += "          <comment id = \"" + pSet.getString("comment_id") + "\"> \n";
+                sResponse += "              <text>" + pSet.getString("comment") + "</text> \n";
+                sResponse += "              <user>" + pSet.getString("user_username") + "</user> \n";
+                sResponse += "          </comment>";
+            }
+            
+            sResponse += "      </subject> \n"
+                    + "</Barker> \n";
+            
+            
+            sp.setResponseXML(sResponse);
+            return sp;
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doViewSubject Error selecting subjects from database " + e.getMessage());
+            return sp;
+        }
+        
+    }
+
+    public SessionParameters doCreateSubject(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="createForumSubject">
+            <createForumSubject>
+                <userEmail>haudrennb@gmail.com</userEmail>
+                <subject>Barker Subject</subject>
+                <text>First Barker Subject</text>
+            </createForumSubject>
+        </Barker>
+         */
+        
+        Log.logProvisioning("Provisioning::doCreateSubject()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail ="";
+        String sSubject = "";
+        String sText = "";
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/userEmail");
+            sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/subject");
+            sSubject = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/text");
+            sText = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doCreateSubject Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        if(sEmail.isEmpty() || sSubject.isEmpty() || sText.isEmpty())
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            Log.logProvisioning("Provisioning::doCreateSubject missing parameter");
+            return sp;
+        }
+        
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT user_username FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            Log.logProvisioning("Provisioning::doCreateSubject SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            String sUsername = "";
+            if(pSet.next())
+            {
+                sUsername = pSet.getString("user_username");
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                Log.logProvisioning("Provisioning::doCreateSubject cannot find user with email " + sEmail);
+                return sp;
+            }
+            
+            sSql = "INSERT INTO " + Config.get("table-subjects") + "(subject_name, subject_description, subject_user_username)" + 
+                    " VALUES ('" + sSubject + "', '" + sText + "','" + sUsername + "') RETURNING subject_id ";
+            Log.logProvisioning("Provisioning::doCreateSubject SQL: " + sSql);
+            
+            pStatement = pDB.prepareStatement(sSql);
+            
+            pSet = pStatement.executeQuery();
+            
+            if(pSet.next())
+            {
+                sResponse = "    <subject>"
+                            + "     <id>" + pSet.getString("subject_id") + "</id>"
+                            + "    </subject>";
+            }
+            
+            
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doViewSubject Error in database " + e.getMessage());
+            return sp;
+        }
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+
+        sp.setResponseXML(sResponse);
+        
+        return sp;
+    }
+
+    public SessionParameters doCreateSubjectComment(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="createSubjectComment">
+            <createSubjectComment>
+                <userEmail>haudrennb@gmail.com</userEmail>
+                <subjectId>1/subjectId>
+                <text>First Barker Subject</text>
+            </createSubjectComment>
+        </Barker>
+         */
+        
+        
+        Log.logProvisioning("Provisioning::doCreateComment()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail ="";
+        int nSubjectId = 0 ;
+        String sText = "";
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/userEmail");
+            sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/subjectId");
+            nSubjectId = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/text");
+            sText = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doCreateComment Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        if(sEmail.isEmpty() || nSubjectId <= 0 || sText.isEmpty())
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            Log.logProvisioning("Provisioning::doCreateComment missing parameter");
+            return sp;
+        }
+        
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT user_username FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            Log.logProvisioning("Provisioning::doCreateComment SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            String sUsername = "";
+            if(pSet.next())
+            {
+                sUsername = pSet.getString("user_username");
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                Log.logProvisioning("Provisioning::doCreateComment cannot find user with email " + sEmail);
+                return sp;
+            }
+            
+            sSql = "SELECT 1 FROM " + Config.get("table-subjects") + " WHERE subject_id = " + nSubjectId;
+            Log.logProvisioning("Provisioning::doCreateComment SQL: " + sSql);
+            
+            pStatement = pDB.prepareStatement(sSql);
+            
+            pSet = pStatement.executeQuery();
+            
+            if(!pSet.next())
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_SUBJECT);
+                Log.logProvisioning("Cannot find subject with id " + nSubjectId);
+                return sp;
+            }
+            
+            sSql = "INSERT INTO " + Config.get("table-comments") + " (subject_id, comment, user_username)"
+                    + " VALUES (" + nSubjectId + ", '" + sText + "'," + sUsername + "') RETURNING comment_id";
+            Log.logProvisioning("Provisioning::doCreateComment SQL: " + sSql);
+            
+            if(pSet.next())
+            {
+                sResponse = "    <comment>"
+                           +"       <id>" + pSet.getString("comment_id") + "</id>"
+                           +"    </comment>";
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+                Log.logProvisioning("Provisioning::doCreateComment couldn't retreive commend id ");
+                return sp;
+            }
+
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doCreateComment Error in database " + e.getMessage());
+            return sp;
+        }
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+            
+            sp.setResponseXML(sResponse);
+
+        return sp;
+    }
+
+    public SessionParameters doGetAccommodations(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="getAccommodations">
+            <getAccommodations>
+                <fromAccommodation>0</fromAccommodation>
+                <toAccommodation>20</toAccommodation>
+            </getAccommodations>
+        </Barker>
+          */
+        Log.logProvisioning("Provisioning::doGetAccommodations()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        int nToAccommodation=0;
+        int nFromAccommodation = 0;
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/fromAccommodation");
+            nFromAccommodation = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/toAccommodation");
+            nToAccommodation = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        
+        if (nToAccommodation <= 0 || nFromAccommodation <= 0 || nToAccommodation > nFromAccommodation)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            Log.logProvisioning("Provisioning::doGetForumSubjects bad from or to values: " + nFromAccommodation + " " + nToAccommodation);
+            return sp;
+        }
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "";
+            
+            sSql = "SELECT * FROM " + Config.get("table-accommodations") + " WHERE subject_id BETWEEN " + nFromAccommodation + " AND " + nToAccommodation;
+            Log.logProvisioning("Provisioning::getAccommodations SQL: " + sSql);
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            while(pSet.next())
+            {
+                sResponse+= "   <accommodation> \n"
+                           +"       <id>" + pSet.getString("accommodation_id") + "</id> \n"
+                           +"       <name>" + pSet.getString("accommodation_name") + "</name> \n"
+                           +"       <rating>" + pSet.getString("accommodation_rating") + "</rating> \n"
+                           +"       <voted>" + pSet.getString("accommodation_voted_count") + "</voted> \n"
+                           +"       <description>" + pSet.getString("accommodation_description") + "</description> \n"
+                           +"       <username>" + pSet.getString("accommodation_rating") + "</username> \n"
+                           +"   </accommodation> \n";
+            }
+            
+            
+            
+
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Error selecting accommodations from database " + e.getMessage());
+            return sp;
+        }
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+        
+        sp.setResponseXML(sResponse);
+        
+        return sp;
+        
+        
+    }
+
+    public SessionParameters doCreateAccommodation(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="createAccommodation">
+            <createAccommodation>
+                <accommodationName>First Accommodation</accommodationName>
+                <accommodationDescription>Accommodation Description</accommodationDescription>
+                <userEmail>haudrennb@gmail.com</userEmail>
+            </createAccommodation>
+        </Barker>
+          */
+        
+        Log.logProvisioning("Provisioning::doCreateAccommodation()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail ="";
+        String sDescription = "";
+        String sName = "";
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/userEmail");
+            sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/accommodationDescription");
+            sDescription = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/accommodationName");
+            sName = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doCreateAccommodation Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        if(sEmail.isEmpty() || sDescription.isEmpty() || sName.isEmpty())
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            Log.logProvisioning("Provisioning::doCreateAccommodation missing parameter");
+            return sp;
+        }
+        
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT user_username FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            Log.logProvisioning("Provisioning::doCreateComment SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            String sUsername = "";
+            if(pSet.next())
+            {
+                sUsername = pSet.getString("user_username");
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                Log.logProvisioning("Provisioning::doCreateAccommodation cannot find user with email " + sEmail);
+                return sp;
+            }
+            
+            
+            sSql = "INSERT INTO " + Config.get("table-accommodations") + " (accommodation_name, accommodation_description, accommodation_user_username)"
+                    + "VALUES ('" + sName + "' , '"+sDescription + "' , '" + sUsername + "') RETURNING accommodation_id";
+            Log.logProvisioning("Provisioning::doCreateAccommodation SQL: " + sSql);
+            
+            if(pSet.next())
+            {
+                sResponse = "    <accommodation>"
+                           +"       <id>" + pSet.getString("accommodation_id") + "</id>"
+                           +"    </accommodation>";
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+                Log.logProvisioning("Provisioning::doCreateAccommodation couldn't retreive accommodation id ");
+                return sp;
+            }
+
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doCreateAccommodation Error in database " + e.getMessage());
+            return sp;
+        }
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+            
+        
+        sp.setResponseXML(sResponse);
+
+        return sp;
+    }
+
+    public SessionParameters doRateAccommodation(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="rateAccommodation">
+            <rateAccommodation>
+                <accommodationId>1</accommodationId>
+                <rate>6</rate>
+                <userEmail>haudrennb@gmail.com</userEmail>
+            </rateAccommodation>
+        </Barker>
+          */
+
+        Log.logProvisioning("Provisioning::doRateAccommodation()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail ="";
+        int nId = 0;
+        int nRate = 0;
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/userEmail");
+            sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/accommodationDescription");
+            nId = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/accommodationName");
+            nRate = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doRateAccommodation Cannot convert properly xml to get subject" + e.getMessage());
+            return sp;
+        }
+        if(sEmail.isEmpty() || nRate <= 0 || nId <= 0)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            Log.logProvisioning("Provisioning::doRateAccommodation missing parameter");
+            return sp;
+        }
+        if(nRate > 10)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            Log.logProvisioning("Provisioning::doRateAccommodation rate exceeds maximum");
+        }
+        
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            //check if the user giving rating exists exists
+            String sSql = "SELECT 1 FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            Log.logProvisioning("Provisioning::doRateAccommodation SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            if(!pSet.next())
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                Log.logProvisioning("Provisioning::doRateAccommodation cannot find user with email " + sEmail);
+                return sp;
+            }
+            
+            
+            sSql = "SELECT accommodation_rating, accommodation_voted_count FROM " + Config.get("table-accommodations") 
+            + " WHERE accommodation_id = " + nId;
+            Log.logProvisioning("Provisioning::doRateAccommodation SQL: " + sSql);
+            
+            double nDBRating = 0;
+            int nDBRatedBy = 0;
+            
+            pStatement = pDB.prepareStatement(sSql);
+            pSet = pStatement.executeQuery();
+            
+            if(pSet.next())
+            {
+                nDBRating = pSet.getDouble("accommodation_rating");
+                nDBRatedBy = pSet.getInt("accommodation_voted_count");
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+                Log.logProvisioning("Provisioning::doRateAccommodation couldn't retreive accommodation id ");
+                return sp;
+            }
+            
+            //in case nobody has voted yet ResultSet returns default values 0
+            //if there are votes already calculate the new rating by the formula avNew = AverageOld + ((value - AverageOld)/sizeNew)
+            ++nDBRatedBy;
+            
+            double nRatingNew= nDBRating + ( (nRate - nDBRating)/nDBRatedBy);
+            
+            sSql = "UPDATE " + Config.get("table-accommodations") + " SET accommodation_rating = " + nRatingNew 
+                    + "accommodation_voted_count = " + nDBRatedBy + " WHERE accommodation_id = " + nId;
+            Log.logProvisioning("Provisioning::doRateAccommodation SQL: " + sSql);
+            
+            pStatement = pDB.prepareStatement(sSql);
+            int nUpdated = pStatement.executeUpdate();
+            
+            //not successfully updated
+            if(nUpdated == 0)
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+                Log.logProvisioning("Couldn't successfully update value for accommodation " + nId);
+                return sp;
+            }
+
+            
+            sResponse = "    <accommodation>"
+                    +"       <id>" + nId + "</id>"
+                    +"       <rating>" + nRatingNew + "</rating>"
+                    +"       <ratedBy>" + nDBRatedBy + "</ratedBy>"
+                    +"    </accommodation>";
+
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doRateAccommodation Error in database " + e.getMessage());
+            return sp;
+        }
+
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+        
+        sp.setResponseXML(sResponse);
+        
+        return sp;
+    }
+
+    public SessionParameters doCreateAccommodationComment(SessionParameters sp)
+    {
+        /*
+        <Barker requestType="createAccommodationComment">
+            <createAccommodationComment>
+                <userEmail>haudrennb@gmail.com</userEmail>
+                <accommodationId>1/accommodationId>
+                <text>First Barker Accommodation</text>
+            </createAccommodationComment>
+        </Barker>
+     */
+    
+    
+    Log.logProvisioning("Provisioning::doCreateAccommodationComment()");
+    
+    Document pDoc= null;
+    DocumentBuilder pBuilder = null;
+    
+    String sEmail ="";
+    int nSubjectId = 0 ;
+    String sText = "";
+    
+    String sResponse= "";
+    try
+    {
+        DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+        pBuilder = pFactory.newDocumentBuilder();
+        pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+        
+        XPathFactory pXpathFactory = XPathFactory.newInstance();
+        XPath pXpath = pXpathFactory.newXPath();            
+        XPathExpression pExp = null;
+        
+        pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/userEmail");
+        sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+        
+        pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/subjectId");
+        nSubjectId = (int) pExp.evaluate( pDoc, XPathConstants.NUMBER );
+        
+        pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/text");
+        sText = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+    }
+    catch(Exception e)
+    {
+        sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+        Log.logProvisioning("Provisioning::doCreateAccommodationComment Cannot convert properly xml to get accommodation comment" + e.getMessage());
+        return sp;
+    }
+    if(sEmail.isEmpty() || nSubjectId <= 0 || sText.isEmpty())
+    {
+        sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+        Log.logProvisioning("Provisioning::doCreateAccommodationComment missing parameter");
+        return sp;
+    }
+    
+    
+    String sConnection = Config.get("database-connection-string");
+    Connection pDB = null;
+    try
+    {
+        pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+        
+        
+        String sSql = "SELECT user_username FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+        Log.logProvisioning("Provisioning::doCreateAccommodationComment SQL: " + sSql);
+        
+        PreparedStatement pStatement = pDB.prepareStatement(sSql);
+        
+        ResultSet pSet = pStatement.executeQuery();
+        
+        String sUsername = "";
+        if(pSet.next())
+        {
+            sUsername = pSet.getString("user_username");
+        }
+        else
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+            Log.logProvisioning("Provisioning::doCreateAccommodationComment cannot find user with email " + sEmail);
+            return sp;
+        }
+        
+        sSql = "SELECT 1 FROM " + Config.get("table-accommodations") + " WHERE accommodation_id = " + nSubjectId;
+        Log.logProvisioning("Provisioning::doCreateAccommodationComment SQL: " + sSql);
+        
+        pStatement = pDB.prepareStatement(sSql);
+        
+        pSet = pStatement.executeQuery();
+        
+        if(!pSet.next())
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_SUBJECT);
+            Log.logProvisioning("Provisioning::doCreateAccommodationComment Cannot find accommodation with id " + nSubjectId);
+            return sp;
+        }
+        
+        sSql = "INSERT INTO " + Config.get("table-accommodation-comments") + " (accommodation_id, comment, user_username)"
+                + " VALUES (" + nSubjectId + ", '" + sText + "'," + sUsername + "') RETURNING comment_id";
+        Log.logProvisioning("Provisioning::doCreateComment SQL: " + sSql);
+        
+        if(pSet.next())
+        {
+            sResponse = "    <comment>"
+                       +"       <id>" + pSet.getString("comment_id") + "</id>"
+                       +"    </comment>";
+        }
+        else
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doCreateAccommodationComment couldn't retreive commend id ");
+            return sp;
+        }
+
+    }
+    catch(Exception e)
+    {
+        sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+        Log.logProvisioning("Provisioning::doCreateAccommodationComment Error in database " + e.getMessage());
+        return sp;
+    }
+    
+    sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+            + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+            + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+            +sResponse
+            +"</Barker>";
+        
+        sp.setResponseXML(sResponse);
+
+    return sp; 
+    
+    }
+
+    public SessionParameters doViewProfile(SessionParameters sp)
+    {
+
+        /*
+        <Barker requestType="viewProfile">
+            <viewProfile>
+                <email>First Accommodation</email>
+            </viewProfile>
+        </Barker>
+          */
+        
+        Log.logProvisioning("Provisioning::doViewProfile()");
+        
+        Document pDoc= null;
+        DocumentBuilder pBuilder = null;
+        
+        String sEmail ="";
+        
+        String sResponse= "";
+        try
+        {
+            DocumentBuilderFactory pFactory = DocumentBuilderFactory.newInstance();        
+            pBuilder = pFactory.newDocumentBuilder();
+            pDoc = pBuilder.parse( new InputSource( new StringReader( sp.getRequestXML() )) );
+            
+            XPathFactory pXpathFactory = XPathFactory.newInstance();
+            XPath pXpath = pXpathFactory.newXPath();            
+            XPathExpression pExp = null;
+            
+            pExp = pXpath.compile("Barker/" + sp.getRequestTypeText() + "/email");
+            sEmail = (String) pExp.evaluate( pDoc, XPathConstants.STRING );
+            
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.INTERNAL_ERROR);
+            Log.logProvisioning("Provisioning::doViewProfile Cannot convert properly xml to get email" + e.getMessage());
+            return sp;
+        }
+        if(sEmail.isEmpty())
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.MISSING_PARAMETER);
+            Log.logProvisioning("Provisioning::doViewProfile missing parameter");
+            return sp;
+        }
+        
+        String sConnection = Config.get("database-connection-string");
+        Connection pDB = null;
+        try
+        {
+            pDB = DriverManager.getConnection(sConnection, Config.get("database-username"), Config.get("database-password"));
+            
+            
+            String sSql = "SELECT * FROM " + Config.get("table-users") + " WHERE user_email = '" + sEmail + "'";
+            Log.logProvisioning("Provisioning::doViewProfile SQL: " + sSql);
+            
+            PreparedStatement pStatement = pDB.prepareStatement(sSql);
+            
+            ResultSet pSet = pStatement.executeQuery();
+            
+            String sUsername = "";
+            if(pSet.next())
+            {
+                sResponse = "   <user> \n"
+                          + "       <id>" + pSet.getString("user_id") + "</id> \n"
+                          + "       <email>" + sEmail + "</email> \n"
+                          + "       <name>" + pSet.getString("user_name") + "</name> \n"
+                          + "       <username>" + pSet.getString("user_username") + "</username> \n"
+                          + "       <birthDate>" + pSet.getString("user_birth_date") + "</birthDate> \n"
+                           +"   </user> \n";
+                sUsername = pSet.getString("user_username");
+            }
+            else
+            {
+                sp.setRequestStatus(Constants.RequestServerStatus.MISSING_USER);
+                Log.logProvisioning("Provisioning::doViewProfile cannot find user with email " + sEmail);
+                return sp;
+            }
+
+        }
+        catch(Exception e)
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.DATABASE_ERROR);
+            Log.logProvisioning("Provisioning::doViewProfile Error in database " + e.getMessage());
+            return sp;
+        }
+        
+        sResponse ="<Barker requestType=\"" + sp.getRequestTypeText()  + "\"> \r\n"
+                + "    <statusCode>" + Constants.requestStatusToCode(Constants.RequestServerStatus.SUCCESS) + "</statusCode>\n" 
+                + "    <statusText>" + Constants.requestStatusToText(Constants.RequestServerStatus.SUCCESS) + "</statusText>\n"
+                +sResponse
+                +"</Barker>";
+            
+
+        sp.setResponseXML(sResponse);
+        return sp;
+        
+        
+            }
     
 }

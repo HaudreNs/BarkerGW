@@ -1,1 +1,2 @@
-[2020/07/09 20:09:34]SQL: INSERT INTO barker.users (user_email, user_name, user_password) VALUES('kalo@kalo.kalo ','Kalo', '936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af') RETURNING user_id
+[2020/07/19 14:01:16]Provisioning::doAddFriendERROR: syntax error at end of input
+  Position: 212

@@ -20,7 +20,7 @@ public class Log
     {
         if(!m_bRequestServerLogExists)
         {
-            createLog("requestServer.log");
+            createLog("requestServer.log", "requestServer");
         }
         
         try
@@ -47,7 +47,7 @@ public class Log
     {
         if(!m_bProvisioningLogExists)
         {
-            createLog("provisioning.log");
+            createLog("provisioning.log", "provisioning");
         }
         
         try
@@ -70,7 +70,7 @@ public class Log
         }
     }
 
-    private static void createLog(String logName)
+    private static void createLog(String logName, String logType)
     {
         
 
@@ -85,7 +85,9 @@ public class Log
             {
               System.out.println("File already exists.");
             }
-            m_bRequestServerLogExists = true;
+            if(logType == "requestServer") m_bRequestServerLogExists = true;
+            else if (logType == "provisioning") m_bProvisioningLogExists = true;
+
         } catch (IOException e)
         {
             e.printStackTrace();

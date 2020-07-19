@@ -16,7 +16,6 @@ public class BarkerGW
             return;
         }
         
-        
         //load Request Server
         Thread tRequestServer = new Thread( new RequestServer() );
         tRequestServer.start();

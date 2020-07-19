@@ -16,9 +16,13 @@ public class Constants
        ,CREATE_WALK
        ,GET_FORUM_SUBJECTS
        ,CREATE_FORUM_SUBJECT
+       ,CREATE_SUBJECT_COMMENT
        ,VIEW_FORUM_SUBJECT
-       ,GET_ACOMMODATIONS
-       ,CREATE_ACOMMODATION
+       ,GET_ACCOMMODATIONS
+       ,CREATE_ACCOMMODATION
+       ,RATE_ACCOMMODATION
+       ,CREATE_ACCOMMODATION_COMMENT
+       ,VIEW_PROFILE
        ,UNKNOWN
     }
     enum RequestServerStatus
@@ -33,6 +37,9 @@ public class Constants
        ,USER_ALREADY_EXISTS
        ,MISSING_FRIEND_REQUEST
        ,FRIEND_REQUEST_ALREADY_EXISTS
+       ,MISSING_SUBJECT
+       ,BAD_PASSWORD
+       ,MISSING_ACCOMMODATION
     }
 
     public static String requestTypeToText(RequestType eType )
@@ -50,8 +57,13 @@ public class Constants
         case VIEW_WALKS: return "viewWalks";
         case GET_FORUM_SUBJECTS: return "getForumSubjects";
         case VIEW_FORUM_SUBJECT: return "viewForumSubject";
-        case GET_ACOMMODATIONS: return "getAccomodations";
-        case CREATE_ACOMMODATION: return "createAcommodation";
+        case CREATE_FORUM_SUBJECT: return "createForumSubject";
+        case CREATE_SUBJECT_COMMENT: return "createSubjectComment";
+        case GET_ACCOMMODATIONS: return "getAccomodations";
+        case CREATE_ACCOMMODATION: return "createAccommodation";
+        case RATE_ACCOMMODATION: return "rateAccommodation";
+        case CREATE_ACCOMMODATION_COMMENT: return "createAccommodationComment";
+        case VIEW_PROFILE: return "viewProfile";
         default: return "unknown";
         }
             
@@ -70,8 +82,13 @@ public class Constants
         else if(sType.equals("createWalk")) return RequestType.CREATE_WALK;
         else if(sType.equals("getForumSubjects")) return RequestType.GET_FORUM_SUBJECTS;
         else if(sType.equals("viewForumSubject")) return RequestType.VIEW_FORUM_SUBJECT;
-        else if(sType.equals("getAccomodations")) return RequestType.GET_ACOMMODATIONS;
-        else if(sType.equals("createAcommodation")) return RequestType.CREATE_ACOMMODATION;
+        else if(sType.equals("createForumSubject")) return RequestType.CREATE_FORUM_SUBJECT;
+        else if(sType.equals("createSubjectComment")) return RequestType.CREATE_SUBJECT_COMMENT;
+        else if(sType.equals("getAccomodations")) return RequestType.GET_ACCOMMODATIONS;
+        else if(sType.equals("createAccommodation")) return RequestType.CREATE_ACCOMMODATION;
+        else if(sType.equals("rateAccommodation")) return RequestType.RATE_ACCOMMODATION;
+        else if(sType.equals("createAccommodationComment")) return RequestType.CREATE_ACCOMMODATION_COMMENT;
+        else if(sType.equals("viewProfile")) return RequestType.VIEW_PROFILE;
         else return RequestType.UNKNOWN;
     }
     
@@ -97,6 +114,9 @@ public class Constants
             case USER_ALREADY_EXISTS: return 402;
             case MISSING_FRIEND_REQUEST: return 403;
             case FRIEND_REQUEST_ALREADY_EXISTS: return 405;
+            case BAD_PASSWORD: return 406;
+            case MISSING_SUBJECT: return 407;
+            case MISSING_ACCOMMODATION: return 408;
             default: return 0;
         }
     }
@@ -118,7 +138,10 @@ public class Constants
             case MISSING_USER: return "Missing User";
             case USER_ALREADY_EXISTS: return "User already exists";
             case MISSING_FRIEND_REQUEST: return "Missing friend request";
+            case MISSING_SUBJECT: return "Missing subject";
             case FRIEND_REQUEST_ALREADY_EXISTS: return "Friend request already exists";
+            case BAD_PASSWORD: return "Wrong password";
+            case MISSING_ACCOMMODATION: return "Missing accommodation";
             default: return "Unknown status";
         }
     }
@@ -136,6 +159,9 @@ public class Constants
             case 402: return "User already exists";
             case 403: return "Missing friend request";
             case 405: return "Friend request already exists";
+            case 406: return "Wrong password";
+            case 407: return "Missing subject";
+            case 408: return "Missing accommodation";
             default: return "Unknown status";
         }
     }

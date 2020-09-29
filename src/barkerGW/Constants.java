@@ -11,8 +11,7 @@ public class Constants
        ,ADD_FRIEND
        ,ACCEPT_FRIEND
        ,GET_FRIENDS
-       ,FIND_WALK
-       ,VIEW_WALKS
+       ,GET_WALKS
        ,CREATE_WALK
        ,GET_FORUM_SUBJECTS
        ,CREATE_FORUM_SUBJECT
@@ -22,7 +21,11 @@ public class Constants
        ,CREATE_ACCOMMODATION
        ,RATE_ACCOMMODATION
        ,CREATE_ACCOMMODATION_COMMENT
+       ,VIEW_ACCOMMODATION
        ,VIEW_PROFILE
+       ,CHANGE_PROFILE_PARAMETERS
+       ,GET_MESSAGES
+       ,ADD_MESSAGE
        ,UNKNOWN
     }
     enum RequestServerStatus
@@ -35,11 +38,13 @@ public class Constants
        ,MISSING_PARAMETER
        ,MISSING_USER
        ,USER_ALREADY_EXISTS
+       ,USER_EMAIL_ALREADY_EXISTS
        ,MISSING_FRIEND_REQUEST
        ,FRIEND_REQUEST_ALREADY_EXISTS
        ,MISSING_SUBJECT
        ,BAD_PASSWORD
        ,MISSING_ACCOMMODATION
+       ,ACCOMMODATION_ALREADY_RATED
     }
 
     public static String requestTypeToText(RequestType eType )
@@ -52,18 +57,21 @@ public class Constants
         case ADD_FRIEND: return "addFriend";
         case ACCEPT_FRIEND: return "acceptFriend";
         case GET_FRIENDS: return "getFriends";
-        case FIND_WALK: return "findWalk";
         case CREATE_WALK: return "createWalk";
-        case VIEW_WALKS: return "viewWalks";
+        case GET_WALKS: return "getWalks";
         case GET_FORUM_SUBJECTS: return "getForumSubjects";
         case VIEW_FORUM_SUBJECT: return "viewForumSubject";
         case CREATE_FORUM_SUBJECT: return "createForumSubject";
         case CREATE_SUBJECT_COMMENT: return "createSubjectComment";
-        case GET_ACCOMMODATIONS: return "getAccomodations";
+        case GET_ACCOMMODATIONS: return "getAccommodations";
         case CREATE_ACCOMMODATION: return "createAccommodation";
         case RATE_ACCOMMODATION: return "rateAccommodation";
         case CREATE_ACCOMMODATION_COMMENT: return "createAccommodationComment";
+        case VIEW_ACCOMMODATION: return "viewAccommodation";
         case VIEW_PROFILE: return "viewProfile";
+        case CHANGE_PROFILE_PARAMETERS: return "changeProfileParameters";
+        case GET_MESSAGES: return "getMessages";
+        case ADD_MESSAGE: return "addMessage";
         default: return "unknown";
         }
             
@@ -77,18 +85,21 @@ public class Constants
         else if(sType.equals("addFriend")) return RequestType.ADD_FRIEND;
         else if(sType.equals("acceptFriend")) return RequestType.ACCEPT_FRIEND;
         else if(sType.equals("getFriends")) return RequestType.GET_FRIENDS;
-        else if(sType.equals("findWalk")) return RequestType.FIND_WALK;
-        else if(sType.equals("viewWalks")) return RequestType.VIEW_WALKS;
+        else if(sType.equals("getWalks")) return RequestType.GET_WALKS;
         else if(sType.equals("createWalk")) return RequestType.CREATE_WALK;
         else if(sType.equals("getForumSubjects")) return RequestType.GET_FORUM_SUBJECTS;
         else if(sType.equals("viewForumSubject")) return RequestType.VIEW_FORUM_SUBJECT;
         else if(sType.equals("createForumSubject")) return RequestType.CREATE_FORUM_SUBJECT;
         else if(sType.equals("createSubjectComment")) return RequestType.CREATE_SUBJECT_COMMENT;
-        else if(sType.equals("getAccomodations")) return RequestType.GET_ACCOMMODATIONS;
+        else if(sType.equals("getAccommodations")) return RequestType.GET_ACCOMMODATIONS;
         else if(sType.equals("createAccommodation")) return RequestType.CREATE_ACCOMMODATION;
         else if(sType.equals("rateAccommodation")) return RequestType.RATE_ACCOMMODATION;
         else if(sType.equals("createAccommodationComment")) return RequestType.CREATE_ACCOMMODATION_COMMENT;
+        else if(sType.equals("viewAccommodation")) return RequestType.VIEW_ACCOMMODATION;
         else if(sType.equals("viewProfile")) return RequestType.VIEW_PROFILE;
+        else if(sType.equals("changeProfileParameters")) return RequestType.CHANGE_PROFILE_PARAMETERS;
+        else if(sType.equals("getMessages")) return RequestType.GET_MESSAGES;
+        else if(sType.equals("addMessage")) return RequestType.ADD_MESSAGE;
         else return RequestType.UNKNOWN;
     }
     
@@ -112,11 +123,13 @@ public class Constants
             case MISSING_PARAMETER: return 460;
             case MISSING_USER: return 401;
             case USER_ALREADY_EXISTS: return 402;
+            case USER_EMAIL_ALREADY_EXISTS: return 409;
             case MISSING_FRIEND_REQUEST: return 403;
             case FRIEND_REQUEST_ALREADY_EXISTS: return 405;
             case BAD_PASSWORD: return 406;
             case MISSING_SUBJECT: return 407;
             case MISSING_ACCOMMODATION: return 408;
+            case ACCOMMODATION_ALREADY_RATED: return 207;
             default: return 0;
         }
     }
@@ -137,11 +150,13 @@ public class Constants
             case MISSING_PARAMETER: return "Missing Parameter";
             case MISSING_USER: return "Missing User";
             case USER_ALREADY_EXISTS: return "User already exists";
+            case USER_EMAIL_ALREADY_EXISTS: return "User email already exists";
             case MISSING_FRIEND_REQUEST: return "Missing friend request";
             case MISSING_SUBJECT: return "Missing subject";
             case FRIEND_REQUEST_ALREADY_EXISTS: return "Friend request already exists";
             case BAD_PASSWORD: return "Wrong password";
             case MISSING_ACCOMMODATION: return "Missing accommodation";
+            case ACCOMMODATION_ALREADY_RATED: return " Accommodation already rated by user";
             default: return "Unknown status";
         }
     }
@@ -152,11 +167,13 @@ public class Constants
         {
             case 200: return "OK";
             case 206: return "Partial Success";
+            case 207: return "Accommodation already rated by user";
             case 500: return "Internal Error";
             case 503: return "Database Error";
             case 400: return "Bad Request";
             case 460: return "Missing Parameter";
             case 402: return "User already exists";
+            case 409: return "User email already exists";
             case 403: return "Missing friend request";
             case 405: return "Friend request already exists";
             case 406: return "Wrong password";

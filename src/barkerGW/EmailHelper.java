@@ -25,6 +25,7 @@ public class EmailHelper
         pEmailProperties.put("mail.smtp.port", "587");
         pEmailProperties.put("mail.smtp.auth", "true");
         pEmailProperties.put("mail.smtp.starttls.enable", "true");
+
         
         Session pSession = Session.getInstance(pEmailProperties, new Authenticator() {
                 

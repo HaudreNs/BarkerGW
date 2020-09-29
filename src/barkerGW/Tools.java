@@ -18,5 +18,15 @@ public class Tools
         //true if complete match false otherwise
         return pEmailMatcher.matches();        
     }
+    
+    public static String escapeString(String sParam)
+    {
+        sParam = sParam.replaceAll("'","''");
+        sParam = sParam.replaceAll(";", "");
+        sParam = sParam.replaceAll("=", "");
+        sParam = sParam.trim();
+
+        return sParam;
+    }
 
 }

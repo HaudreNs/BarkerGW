@@ -51,6 +51,7 @@ public class RequestServer implements Runnable
             {
                 //accept client
                 m_socket = pServerSocket.accept();
+                Log.logRequestServer("RequestServer::run received connection");
                 SessionParameters sp = new SessionParameters();
                 
                 m_socket.setSoTimeout( nTimeOut);
@@ -114,7 +115,7 @@ public class RequestServer implements Runnable
         else if(sp.getRequestType() == Constants.RequestType.ACCEPT_FRIEND) sp = pProvisioning.doAcceptFriend(sp);
         else if(sp.getRequestType() == Constants.RequestType.GET_FRIENDS) sp = pProvisioning.doGetFriends(sp);
         else if(sp.getRequestType() == Constants.RequestType.CREATE_WALK) sp = pProvisioning.doCreateWalk(sp);
-        else if(sp.getRequestType() == Constants.RequestType.VIEW_WALKS) sp = pProvisioning.doGetWalks(sp);
+        else if(sp.getRequestType() == Constants.RequestType.GET_WALKS) sp = pProvisioning.doGetWalks(sp);
         else if(sp.getRequestType() == Constants.RequestType.GET_FORUM_SUBJECTS) sp = pProvisioning.doGetForumSubjects(sp);
         else if(sp.getRequestType() == Constants.RequestType.VIEW_FORUM_SUBJECT) sp = pProvisioning.doViewSubject(sp);
         else if(sp.getRequestType() == Constants.RequestType.CREATE_FORUM_SUBJECT) sp = pProvisioning.doCreateSubject(sp);
@@ -122,9 +123,19 @@ public class RequestServer implements Runnable
         else if(sp.getRequestType() == Constants.RequestType.GET_ACCOMMODATIONS) sp = pProvisioning.doGetAccommodations(sp);
         else if(sp.getRequestType() == Constants.RequestType.CREATE_ACCOMMODATION) sp = pProvisioning.doCreateAccommodation(sp);
         else if(sp.getRequestType() == Constants.RequestType.RATE_ACCOMMODATION) sp = pProvisioning.doRateAccommodation(sp);
+        else if(sp.getRequestType() == Constants.RequestType.VIEW_ACCOMMODATION) sp = pProvisioning.doViewAccommodation(sp);
         else if(sp.getRequestType() == Constants.RequestType.CREATE_ACCOMMODATION_COMMENT) sp = pProvisioning.doCreateAccommodationComment(sp);
         else if(sp.getRequestType() == Constants.RequestType.VIEW_PROFILE) sp = pProvisioning.doViewProfile(sp);
-        // TODO Auto-generated method stub
+        else if(sp.getRequestType() == Constants.RequestType.CHANGE_PROFILE_PARAMETERS) sp = pProvisioning.doChangeProfileParameters(sp);
+        else if(sp.getRequestType() == Constants.RequestType.GET_MESSAGES) sp = pProvisioning.doGetMessages(sp);
+        else if(sp.getRequestType() == Constants.RequestType.ADD_MESSAGE) sp = pProvisioning.doAddMessage(sp);
+        
+        else
+        {
+            sp.setRequestStatus(Constants.RequestServerStatus.BAD_XML);
+            Log.logRequestServer("Provisioning::execute command bad xml method");
+            return sp;
+        }
         Log.logRequestServer("After completing Provisioning Request status is " + sp.getStatusCode() + " " + sp.getStatusText());
         return sp;
     }
@@ -212,9 +223,10 @@ public class RequestServer implements Runnable
                       + "    <statusText>" + sp.getStatusText() + "</statusText>\n"
                       + "</Barker>";
             
-            Log.logRequestServer(sResponse);
-
         }
+        
+        Log.logRequestServer(sResponse);
+        
         try
         {
             
